@@ -6,7 +6,7 @@ class SergeantPluginLoader {
 	constructor(loaderContext) {
 		this.loaderApi = loaderContext;
 
-		this.promisedResolve = pify(this.loaderApi.resolve);
+		this.promisedResolve = pify(this.loaderApi.resolve.bind(this.loaderApi));
 
 		// Patterns to check the source code against
 		// We should always have 2 capturing groups in the regex: ['sergeant-plugins-core', 'core']
@@ -78,14 +78,13 @@ class SergeantPluginLoader {
 
 	/**
 	 *
-	 * @param content Raw filedata
 	 * @param rawImport The raw import string (eg. `require('sergeant-plugins-core');`)
 	 * @param patternToReplace The sergeant module importation string pattern (eg. `sergeant-plugins-core`)
 	 * @param pluginType The type of the files to be imported (eg. `core`)
 	 * @param lang The language of the file (eg. `js`)
 	 * @return {*}
 	 */
-	replaceImports(content, {rawImport, patternToReplace, pluginType, lang}) {
+	replaceImports({rawImport, patternToReplace, pluginType, lang}) {
 		const newImports = [];
 
 		// Adding some comments to the source
@@ -96,9 +95,18 @@ class SergeantPluginLoader {
 
 		return new Promise((resolve, reject) => {
 			Promise.all(pathPromises).then(resolvedPaths => {
-				resolvedPaths.map(pluginPath => newImports.push(rawImport.replace(patternToReplace, pluginPath)));
+				resolvedPaths.map(pluginPath => {
+					pluginPath = pluginPath.replace(/\\/g, '\\\\');
+					newImports.push(rawImport.replace(patternToReplace, pluginPath))
+				});
 
-				resolve(content.replace(rawImport, newImports.join('\n')));
+				resolve({
+					newImport: newImports.join('\n'),
+					rawImport,
+					patternToReplace,
+					pluginType,
+					lang
+				});
 			});
 		});
 	}
@@ -117,14 +125,28 @@ class SergeantPluginLoader {
 
 		// We are iterating over the possible regexes (like `import 'xy'` or `require('xy')`) and checking the raw code against them
 		return new Promise((resolve, reject) => {
+			const replacedImports = [];
+
 			Object.keys(langRegexes).forEach(key => {
 				const regexp = langRegexes[key];
 				const matches = regexp.exec(content);
 
 				if (matches === null) return;
 
-				this.replaceImports(content, {rawImport: matches[0], patternToReplace: matches[1], pluginType: matches[2], lang, resourcePath}).then(content => resolve(content));
+				replacedImports.push(this.replaceImports({rawImport: matches[0], patternToReplace: matches[1], pluginType: matches[2], lang, resourcePath}));
 			});
+
+			if (!replacedImports.length) {
+				resolve(content);
+			} else {
+				Promise.all(replacedImports).then(newImports => {
+					newImports.map(newImport => {
+						content = content.replace(newImport.rawImport, newImport.newImport);
+					});
+
+					resolve(content)
+				});
+			}
 		});
 	}
 }
