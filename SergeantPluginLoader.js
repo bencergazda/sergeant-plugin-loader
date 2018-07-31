@@ -37,6 +37,17 @@ class SergeantPluginLoader {
 		this.plugins = ['plugin-1', 'plugin-2']
 	}
 
+	/**
+	 * Removes comments from the `content`
+	 *
+	 * @url https://stackoverflow.com/a/15123777/3111787 (Hope, that 98% will be enough for us...)
+	 * @param content
+	 * @return {string | void | *}
+	 */
+	removeComments(content) {
+		return content.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
+	}
+
 	modeFromExt(ext) {
 		ext = ext.replace('.', ''); // probably more safe than `ext.substr(1)`
 
@@ -124,6 +135,9 @@ class SergeantPluginLoader {
 		const lang = this.modeFromExt(ext);
 		const langRegexes = this.regexes[lang];
 
+		// Remove comments from the `content`, in order not to import commented out imports
+		const uncommented = this.removeComments(content);
+
 		return new Promise((resolve, reject) => {
 			// This will contain the Promises returned from `this.generateRawImports`
 			const replaceQueue = [];
@@ -131,7 +145,7 @@ class SergeantPluginLoader {
 			// We are iterating over the possible regexes (like `import 'xy'` or `require('xy')`) and checking the raw code against them
 			Object.keys(langRegexes).forEach(key => {
 				const regexp = langRegexes[key];
-				const matches = regexp.exec(content);
+				const matches = regexp.exec(uncommented);
 
 				if (matches === null) return;
 
