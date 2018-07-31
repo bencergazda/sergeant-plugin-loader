@@ -1,9 +1,12 @@
+const pify = require('pify');
 const path = require('path');
-// const sassResolver = require('./sassResolver');
+const sassResolver = require('./sassResolver');
 
 class SergeantPluginLoader {
 	constructor(loaderContext) {
-		this.resolve = loaderContext.resolve;
+		this.loaderApi = loaderContext;
+
+		this.promisedResolve = pify(this.loaderApi.resolve);
 
 		// Patterns to check the source code against
 		// We should always have 2 capturing groups in the regex: ['sergeant-plugins-core', 'core']
@@ -31,7 +34,7 @@ class SergeantPluginLoader {
 
 		// Needs to be defined by default!
 		// this.plugins = []
-		this.plugins = ['./plugin-1', './plugin-2']
+		this.plugins = ['plugin-1', 'plugin-2']
 	}
 
 	modeFromExt(ext) {
@@ -47,21 +50,17 @@ class SergeantPluginLoader {
 	}
 
 	resolveSass(path) {
-		// const importer = sassResolver(path, this.resolve);
-		//
-		// return new Promise(resolve => {
-		// 	importer(path, path, value => {
-		// 		// console.log(value.file);
-		// 		resolve(value.file)
-		// 	})
-		// });
+		const importer = sassResolver(this.loaderApi.context, this.promisedResolve);
+
+		return new Promise(resolve => {
+			importer(path, this.loaderApi.context, value => {
+				resolve(value.file)
+			})
+		});
 	}
 
 	resolveJs(path) {
-		// TODO Ezt valahogy megoldani!! (Az egészet async-ká kellene tenni
-		return this.resolve(process.cwd(), path, bla => {
-			console.log(bla)
-		});
+		return this.promisedResolve(this.loaderApi.context, path);
 	}
 
 	getPathToImport(plugin, pluginType, lang) {
@@ -99,15 +98,15 @@ class SergeantPluginLoader {
 		const comments = this.comments[lang];
 		newImports.push(comments.open + ' Sergeant plugins - ' + pluginType + ' files ' + comments.close);
 
-		this.plugins.map(item => {
-			const pluginPath = this.getPathToImport(item, pluginType, lang);
+		const pathPromises = this.plugins.map(item => this.getPathToImport(item, pluginType, lang));
 
-			if (pluginPath === undefined) return;
+		return new Promise((resolve, reject) => {
+			Promise.all(pathPromises).then(resolvedPaths => {
+				resolvedPaths.map(pluginPath => newImports.push(rawImport.replace(patternToReplace, pluginPath)));
 
-			newImports.push(rawImport.replace(patternToReplace, pluginPath))
+				resolve(content.replace(rawImport, newImports.join('\n')));
+			});
 		});
-
-		return content.replace(rawImport, newImports.join('\n'));
 	}
 
 	/**
@@ -122,17 +121,17 @@ class SergeantPluginLoader {
 		const lang = this.modeFromExt(ext);
 		const langRegexes = this.regexes[lang];
 
-		// We are iterating over the possible regexes and checking the raw code against them
-		Object.keys(langRegexes).forEach(key => {
-			const regexp = langRegexes[key];
-			const matches = regexp.exec(content);
+		// We are iterating over the possible regexes (like `import 'xy'` or `require('xy')`) and checking the raw code against them
+		return new Promise((resolve, reject) => {
+			Object.keys(langRegexes).forEach(key => {
+				const regexp = langRegexes[key];
+				const matches = regexp.exec(content);
 
-			if (matches === null) return;
+				if (matches === null) return;
 
-			content = this.replaceImports(content, {rawImport: matches[0], patternToReplace: matches[1], pluginType: matches[2], lang, resourcePath})
+				this.replaceImports(content, {rawImport: matches[0], patternToReplace: matches[1], pluginType: matches[2], lang, resourcePath}).then(content => resolve(content));
+			});
 		});
-
-		return content;
 	}
 }
 
