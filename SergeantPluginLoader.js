@@ -15,7 +15,6 @@ class SergeantPluginLoader {
 
 		// Patterns to check the source code against
 		// We should always have 2 capturing groups in the regex: ['sergeant-plugins-core', 'core']
-		// TODO This doesn't find duplicated same import types
 		this.regexes = {
 			js: {
 				require: /require\s?\(['|"](sergeant-plugins-(.*?))['|"]\);?/g, // require(), ' or ", ; at the end or not, eg: require('sergeant-plugins-core');
@@ -166,11 +165,12 @@ class SergeantPluginLoader {
 			// We are iterating over the possible regexes (like `import 'xy'` or `require('xy')`) and checking the raw code against them
 			Object.keys(langRegexes).forEach(key => {
 				const regexp = langRegexes[key];
-				const matches = regexp.exec(uncommented);
+				let matches;
 
-				if (matches === null) return;
-
-				replaceQueue.push(this.generateRawImports({rawImport: matches[0], patternToReplace: matches[1], importType: matches[2], lang, resourcePath}));
+				// Find all the possible imports (if there's more), which mach this RegExp (otherwise we would just get the first instance - https://stackoverflow.com/a/5283091/3111787)
+				while ((matches = regexp.exec(uncommented)) !== null) {
+					replaceQueue.push(this.generateRawImports({rawImport: matches[0], patternToReplace: matches[1], importType: matches[2], lang, resourcePath}));
+				}
 			});
 
 			// If we have found any plugin import notation
