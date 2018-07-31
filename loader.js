@@ -6,5 +6,9 @@ module.exports = function loader(content, map, meta) {
 
 	sergeantPluginLoader.apply(content, {
 		resourcePath: this.resourcePath
-	}).then(newContent => callback(null, newContent, map, meta)).catch(e => console.log('\nError: ', e));
+	}).then((newContent, err) => {
+		if (err) return callback(err);
+
+		callback(null, newContent, map, meta);
+	});
 };
