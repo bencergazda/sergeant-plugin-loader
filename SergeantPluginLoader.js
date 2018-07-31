@@ -2,6 +2,8 @@ const pify = require('pify');
 const path = require('path');
 const sassResolver = require('./sassResolver');
 
+const loaderUtils = require('loader-utils');
+
 class SergeantPluginLoader {
 	constructor(loaderContext) {
 		this.loaderApi = loaderContext;
@@ -108,7 +110,9 @@ class SergeantPluginLoader {
 		return new Promise((resolve, reject) => {
 			Promise.all(pathPromises).then(resolvedPaths => {
 				resolvedPaths.map(pluginPath => {
-					pluginPath = pluginPath.replace(/\\/g, '\\\\');
+					// Fixing the `backslash-in-path` problem, which occurs on Windows machines
+					// Do not forget that stringifyRequest returns a `JSON.stringify()`-ed value! :-)
+					pluginPath = JSON.parse(loaderUtils.stringifyRequest(this.loaderApi, pluginPath));
 					newImports.push(rawImport.replace(patternToReplace, pluginPath))
 				});
 
