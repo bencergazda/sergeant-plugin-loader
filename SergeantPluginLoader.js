@@ -1,3 +1,4 @@
+const fs = require('fs');
 const pify = require('pify');
 const path = require('path');
 const sassResolver = require('./sassResolver');
@@ -9,6 +10,8 @@ class SergeantPluginLoader {
 		this.loaderApi = loaderContext;
 
 		this.promisedResolve = pify(this.loaderApi.resolve.bind(this.loaderApi));
+
+		// this.silentFail = false;
 
 		// Patterns to check the source code against
 		// We should always have 2 capturing groups in the regex: ['sergeant-plugins-core', 'core']
@@ -73,7 +76,17 @@ class SergeantPluginLoader {
 	}
 
 	resolveJs(path) {
-		return this.promisedResolve(this.loaderApi.context, path);
+		return new Promise(resolve => {
+			this.promisedResolve(this.loaderApi.context, path).then(
+				value => resolve(value),
+				err => {
+					if (this.silentFail === false) this.loaderApi.emitError(new Error(err));
+
+					// We need to resolve also if there was an error in the file resolution (~file not found), as otherwise the whole Promise.all() block will fail in `generateRawImports()`
+					resolve();
+				}
+			);
+		});
 	}
 
 	getPathToImport(plugin, pluginType, lang) {
@@ -110,10 +123,14 @@ class SergeantPluginLoader {
 		return new Promise((resolve, reject) => {
 			Promise.all(pathPromises).then(resolvedPaths => {
 				resolvedPaths.map(pluginPath => {
-					// Fixing the `backslash-in-path` problem, which occurs on Windows machines
-					// Do not forget that stringifyRequest returns a `JSON.stringify()`-ed value! :-)
-					pluginPath = JSON.parse(loaderUtils.stringifyRequest(this.loaderApi, pluginPath));
-					newImports.push(rawImport.replace(patternToReplace, pluginPath))
+					// We check if the `pluginPath` exists, and we add it to the import list only if so
+					if (pluginPath !== undefined && fs.existsSync(pluginPath)) {
+						// Fixing the `backslash-in-path` problem, which occurs on Windows machines
+						// Do not forget that stringifyRequest returns a `JSON.stringify()`-ed value! :-)
+						const fixedPluginPath = JSON.parse(loaderUtils.stringifyRequest(this.loaderApi, pluginPath));
+
+						newImports.push(rawImport.replace(patternToReplace, fixedPluginPath))
+					}
 				});
 
 				resolve({
