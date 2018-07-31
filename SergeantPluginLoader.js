@@ -1,5 +1,4 @@
 const fs = require('fs');
-const pify = require('pify');
 const path = require('path');
 const sassResolver = require('./sassResolver');
 
@@ -8,8 +7,6 @@ const loaderUtils = require('loader-utils');
 class SergeantPluginLoader {
 	constructor(loaderContext) {
 		this.loaderApi = loaderContext;
-
-		this.promisedResolve = pify(this.loaderApi.resolve.bind(this.loaderApi));
 
 		// this.silentFail = false;
 
@@ -65,7 +62,7 @@ class SergeantPluginLoader {
 	}
 
 	resolveSass(path) {
-		const importer = sassResolver(this.loaderApi.context, this.promisedResolve);
+		const importer = sassResolver(this.loaderApi.context, this.loaderApi.resolve);
 
 		return new Promise(resolve => {
 			importer(path, this.loaderApi.context, value => {
@@ -76,15 +73,16 @@ class SergeantPluginLoader {
 
 	resolveJs(path) {
 		return new Promise(resolve => {
-			this.promisedResolve(this.loaderApi.context, path).then(
-				value => resolve(value),
-				err => {
+			this.loaderApi.resolve(this.loaderApi.context, path, (err, result) => {
+				if (err) {
 					if (this.silentFail === false) this.loaderApi.emitError(new Error(err));
 
 					// We need to resolve also if there was an error in the file resolution (~file not found), as otherwise the whole Promise.all() block will fail in `generateRawImports()`
 					resolve();
+				} else {
+					resolve(result)
 				}
-			);
+			});
 		});
 	}
 
