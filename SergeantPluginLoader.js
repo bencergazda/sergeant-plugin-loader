@@ -68,18 +68,12 @@ class SergeantPluginLoader {
 
 		const filePath = path.join(plugin, pluginType);
 
-		let resolvedPath;
-
 		switch (lang) {
 			case 'sass':
-				resolvedPath = this.resolveSass(filePath);
-				break;
+				return this.resolveSass(filePath);
 			case 'js':
-				resolvedPath = this.resolveJs(filePath);
-				break;
+				return this.resolveJs(filePath);
 		}
-
-		return resolvedPath;
 	}
 
 	/**
