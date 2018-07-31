@@ -11,7 +11,7 @@ class SergeantPluginLoader {
 		this.regexes = {
 			js: {
 				require: /require\s?\(['|"](sergeant-plugins-(.*?))['|"]\);?/g, // require(), ' or ", ; at the end or not, eg: require('sergeant-plugins-core');
-				import: /import\s?['|"](sergeant-plugins-(.*?)['|"]);?/g // import, ' or ", ; at the end or not, eg: import 'sergeant-plugins-core';
+				import: /import\s?['|"](sergeant-plugins-(.*?))['|"];?/g // import, ' or ", ; at the end or not, eg: import 'sergeant-plugins-core';
 			},
 			sass: {
 				import: /@import\s?['|"](sergeant-plugins-(.*?))['|"];?/g // @import, ' or ", ; at the end or not, eg: @import 'sergeant-plugins-core';
