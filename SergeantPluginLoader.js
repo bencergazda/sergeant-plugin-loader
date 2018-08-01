@@ -8,7 +8,7 @@ class SergeantPluginLoader {
 	constructor(loaderContext) {
 		this.loaderApi = loaderContext;
 
-		// this.silentFail = false;
+		this.silentFail = false;
 
 		// Patterns to check the source code against
 		// We should always have 2 capturing groups in the regex: ['sergeant-plugins-core', 'core']
@@ -61,11 +61,28 @@ class SergeantPluginLoader {
 		}
 	}
 
+	/**
+	 * Checks whether the given path is a relative request or a module call
+	 * @param path
+	 * @return {boolean}
+	 */
+	static isRelativePath(path) {
+		if (path.startsWith('.')) return true;
+
+		return false;
+	}
+
 	resolveSass(path) {
 		const importer = sassResolver(this.loaderApi.context, this.loaderApi.resolve);
 
+		// Use the usual '~' module notation in case `path` is not a relative path
+		if (!SergeantPluginLoader.isRelativePath(path)) path = '~' + path;
+
+		// We also need to fix the path for the importer. (Only on Windows machines?)
+		const fixedPath = JSON.parse(loaderUtils.stringifyRequest(this.loaderApi, path));
+
 		return new Promise(resolve => {
-			importer(path, this.loaderApi.context, value => {
+			importer(fixedPath, this.loaderApi.context, value => {
 				resolve(value.file)
 			})
 		});
