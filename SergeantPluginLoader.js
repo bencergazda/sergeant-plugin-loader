@@ -10,6 +10,10 @@ class SergeantPluginLoader {
 
 		this.silentFail = false;
 
+		// We need the paths be relative to the project root (package.json or better ~Gruntfile.js), where the plugins have been configured.
+		// Using `this.loaderApi.context` leads to problems when resolving a plugin with relative path, as `this.loaderApi.context` will be `src/js` in case of JS files and `src/sass` in case of Sass files
+		this.context = process.cwd();
+
 		// Patterns to check the source code against
 		// We should always have 2 capturing groups in the regex: ['sergeant-plugins-core', 'core']
 		this.regexes = {
@@ -35,7 +39,8 @@ class SergeantPluginLoader {
 
 		// Needs to be defined by default!
 		// this.plugins = []
-		this.plugins = ['plugin-1', 'plugin-2']
+		// Can be a relative (`../../`) or absolute path (`C:\\...`), or a module request()
+		this.plugins = ['D:\\localhost\\sergeant-sandbox\\plugin-3', './public/plugin-4', 'plugin-1', 'plugin-2']
 	}
 
 	/**
@@ -63,34 +68,38 @@ class SergeantPluginLoader {
 
 	/**
 	 * Checks whether the given path is a relative request or a module call
-	 * @param path
+	 * @param filePath
 	 * @return {boolean}
 	 */
-	static isRelativePath(path) {
-		if (path.startsWith('.')) return true;
+	static isModulePath(filePath) {
+		// If not a relative path
+		if (filePath.startsWith('.')) return false;
 
-		return false;
+		// If not absolute path (https://stackoverflow.com/a/24225816/3111787)
+		if (path.resolve(filePath) === path.normalize(filePath).replace(/[\/|\\]$/, '')) return false;
+
+		return true;
 	}
 
-	resolveSass(path) {
-		const importer = sassResolver(this.loaderApi.context, this.loaderApi.resolve);
+	resolveSass(filePath) {
+		const importer = sassResolver(this.context, this.loaderApi.resolve);
 
-		// Use the usual '~' module notation in case `path` is not a relative path
-		if (!SergeantPluginLoader.isRelativePath(path)) path = '~' + path;
+		// If we have a relative path, we need to resolve it here, as we need to resolve it relatively to the Gruntfile.js (~`process.cwd()`)
+		if (filePath.startsWith('.')) filePath = path.resolve(this.context, filePath);
 
-		// We also need to fix the path for the importer. (Only on Windows machines?)
-		const fixedPath = JSON.parse(loaderUtils.stringifyRequest(this.loaderApi, path));
+		// Add the usual '~' module notation for the sass resolver in case `path` is a module path
+		if (SergeantPluginLoader.isModulePath(filePath)) filePath = '~' + filePath;
 
 		return new Promise(resolve => {
-			importer(fixedPath, this.loaderApi.context, value => {
+			importer(filePath, this.loaderApi.context, value => {
 				resolve(value.file)
 			})
 		});
 	}
 
-	resolveJs(path) {
+	resolveJs(filePath) {
 		return new Promise(resolve => {
-			this.loaderApi.resolve(this.loaderApi.context, path, (err, result) => {
+			this.loaderApi.resolve(this.context, filePath, (err, result) => {
 				if (err) {
 					if (this.silentFail === false) this.loaderApi.emitError(new Error(err));
 
@@ -106,7 +115,9 @@ class SergeantPluginLoader {
 	getPathToImport(plugin, pluginType, lang) {
 		if (pluginType === undefined) throw new Error('getPathToImport - type must be set!');
 
-		const filePath = path.join(plugin, pluginType);
+		// We cannot use path.join(), as it modifies even the beginning of the path, eg. `path.join('./something', 'core')` will be `something/core`.
+		// This doesn't let us to use relative plugin imports
+		const filePath = plugin + '/' + pluginType;
 
 		switch (lang) {
 			case 'sass':
