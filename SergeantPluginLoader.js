@@ -162,11 +162,12 @@ class SergeantPluginLoader {
 	 * Makes the modifications on the `content` (if needed) and returns it
 	 *
 	 * @param content
-	 * @param resourcePath
-	 * @return {*}
+	 * @param map
+	 * @param meta
+	 * @return {Promise<string>}
 	 */
-	apply(content, {resourcePath}) {
-		const ext = path.extname(resourcePath);
+	apply(content, map, meta) {
+		const ext = path.extname(this.loaderApi.resourcePath);
 		const lang = this.modeFromExt(ext);
 		const langRegexes = this.regexes[lang];
 
@@ -184,7 +185,7 @@ class SergeantPluginLoader {
 
 				// Find all the possible imports (if there's more), which mach this RegExp (otherwise we would just get the first instance - https://stackoverflow.com/a/5283091/3111787)
 				while ((matches = regexp.exec(uncommented)) !== null) {
-					replaceQueue.push(this.generateRawImports({rawImport: matches[0], patternToReplace: matches[1], importType: matches[2], lang, resourcePath}));
+					replaceQueue.push(this.generateRawImports({rawImport: matches[0], patternToReplace: matches[1], importType: matches[2], lang}));
 				}
 			});
 
