@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const sassResolver = require('./sassResolver');
-
 const loaderUtils = require('loader-utils');
+
+const sergeantConfig = process.sergeantConfig;
 
 class SergeantPluginLoader {
 	constructor(loaderContext) {
@@ -40,7 +41,7 @@ class SergeantPluginLoader {
 		// Needs to be defined by default!
 		// this.plugins = []
 		// Can be a relative (`../../`) or absolute path (`C:\\...`), or a module request()
-		this.plugins = ['D:\\localhost\\sergeant-sandbox\\plugin-3', './public/plugin-4', 'plugin-1', 'plugin-2']
+		this.plugins = [...sergeantConfig.sergeant.plugins];
 	}
 
 	/**
