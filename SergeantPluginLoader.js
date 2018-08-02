@@ -7,12 +7,12 @@ const sergeantConfig = process.sergeantConfig;
 
 class SergeantPluginLoader {
 	constructor(loaderContext) {
-		this.loaderApi = loaderContext;
+		this.loaderContext = loaderContext;
 
 		this.silentFail = false;
 
 		// We need the paths be relative to the project root (package.json or better ~Gruntfile.js), where the plugins have been configured.
-		// Using `this.loaderApi.context` leads to problems when resolving a plugin with relative path, as `this.loaderApi.context` will be `src/js` in case of JS files and `src/sass` in case of Sass files
+		// Using `this.loaderContext.context` leads to problems when resolving a plugin with relative path, as `this.loaderContext.context` will be `src/js` in case of JS files and `src/sass` in case of Sass files
 		this.context = process.cwd();
 
 		// Patterns to check the source code against
@@ -83,7 +83,7 @@ class SergeantPluginLoader {
 	}
 
 	resolveSass(filePath) {
-		const importer = sassResolver(this.context, this.loaderApi.resolve);
+		const importer = sassResolver(this.context, this.loaderContext.resolve);
 
 		// If we have a relative path, we need to resolve it here, as we need to resolve it relatively to the Gruntfile.js (~`process.cwd()`)
 		if (filePath.startsWith('.')) filePath = path.resolve(this.context, filePath);
@@ -92,7 +92,7 @@ class SergeantPluginLoader {
 		if (SergeantPluginLoader.isModulePath(filePath)) filePath = '~' + filePath;
 
 		return new Promise(resolve => {
-			importer(filePath, this.loaderApi.context, value => {
+			importer(filePath, this.loaderContext.context, value => {
 				resolve(value.file)
 			})
 		});
@@ -100,9 +100,9 @@ class SergeantPluginLoader {
 
 	resolveJs(filePath) {
 		return new Promise(resolve => {
-			this.loaderApi.resolve(this.context, filePath, (err, result) => {
+			this.loaderContext.resolve(this.context, filePath, (err, result) => {
 				if (err) {
-					if (this.silentFail === false) this.loaderApi.emitError(new Error(err));
+					if (this.silentFail === false) this.loaderContext.emitError(new Error(err));
 
 					// We need to resolve also if there was an error in the file resolution (~file not found), as otherwise the whole Promise.all() block will fail in `generateRawImports()`
 					resolve();
@@ -153,7 +153,7 @@ class SergeantPluginLoader {
 					if (pluginPath !== undefined && fs.existsSync(pluginPath)) {
 						// Fixing the `backslash-in-path` problem, which occurs on Windows machines
 						// Do not forget that stringifyRequest returns a `JSON.stringify()`-ed value! :-)
-						const fixedPluginPath = JSON.parse(loaderUtils.stringifyRequest(this.loaderApi, pluginPath));
+						const fixedPluginPath = JSON.parse(loaderUtils.stringifyRequest(this.loaderContext, pluginPath));
 
 						newImports.push(rawImport.replace(patternToReplace, fixedPluginPath))
 					}
@@ -179,7 +179,7 @@ class SergeantPluginLoader {
 	 * @return {Promise<string>}
 	 */
 	apply(content, map, meta) {
-		const ext = path.extname(this.loaderApi.resourcePath);
+		const ext = path.extname(this.loaderContext.resourcePath);
 		const lang = this.modeFromExt(ext);
 		const langRegexes = this.regexes[lang];
 
