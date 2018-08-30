@@ -8,8 +8,7 @@
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "pify": "^3.0.0",
-    "sass-loader": "^7.0.3"
+  "peerDependencies": {
+    "sass-loader": ">=5.x"
   }
 }
