@@ -4,8 +4,8 @@ module.exports = function loader(content, map, meta) {
 	const sergeantPluginLoader = new SergeantPluginLoader(this);
 	const callback = this.async();
 
-	const imports = sergeantPluginLoader.collectImports(content);
-	const pluginImports = sergeantPluginLoader.filterPluginImports(imports);
+	const imports = sergeantPluginLoader.collectImportStatements(content);
+	const pluginImports = sergeantPluginLoader.filterPluginImportStatements(imports);
 
 	// If we have found any Sergeant plugin import notation
 	if (pluginImports.length) {

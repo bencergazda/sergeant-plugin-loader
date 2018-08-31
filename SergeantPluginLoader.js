@@ -13,7 +13,7 @@ class SergeantPluginLoader {
 
 		// Patterns to check the source code against
 		this.regexes = {
-			// Finding the different import notations
+			// Finding the different import statements
 			js: {
 				require: /require\s?\(['"](.*)['"]\);?/g, // require(), ' or ", ; at the end or not, eg: require('...');
 				import: /import\s?['"](.*)['"];?/g // import, ' or ", ; at the end or not, eg: import '...';
@@ -128,7 +128,7 @@ class SergeantPluginLoader {
 		return new Promise(resolve => {
 			this.loaderContext.resolve(this.context, filePath, (err, result) => {
 				if (err) {
-					// We need to resolve also if there was an error in the file resolution (~file not found), as otherwise the whole Promise.all() block will fail in `generateRawImports()`
+					// We need to resolve also if there was an error in the file resolution (~file not found), as otherwise the whole Promise.all() block will fail in `generatePluginImportStatements()`
 					resolve();
 				} else {
 					resolve(result)
@@ -170,12 +170,12 @@ class SergeantPluginLoader {
 	 */
 	collectFiles(importType) {
 		return new Promise((resolve, reject) => {
-			const collection = [];
-
 			// Collecting all the available files
 			const pathPromises = this.plugins.map(plugin => this.resolve(plugin, importType, this.resourceLang));
 
 			Promise.all(pathPromises).then(resolvedPaths => {
+				const collection = [];
+
 				resolvedPaths.map(pluginPath => {
 					// We check if the `pluginPath` exists, and we add it to the import list only if so
 					if (pluginPath !== undefined && fs.existsSync(pluginPath)) {
@@ -192,14 +192,14 @@ class SergeantPluginLoader {
 	}
 
 	/**
-	 * Creates the raw import strings for every module, using exactly the same import notation (eg. `import 'xy'` or `require('xy)` or `@import 'xy'`), as the rawImport string.
+	 * Creates the raw import statements for every module, using exactly the same import statement (eg. `import 'xy'` or `require('xy)` or `@import 'xy'`), as the rawImport string.
 	 *
 	 * @param rawImport The raw import string (eg. `require('sergeant-plugins-core');`)
 	 * @param path The sergeant module importation string pattern (eg. `sergeant-plugins-core`)
 	 * @param lang The language of the file (eg. `js`)
 	 * @return {*}
 	 */
-	generateRawImports({rawImport, path}, lang) {
+	generatePluginImportStatements({rawImport, path}, lang) {
 		return new Promise((resolve, reject) => {
 			const importType = this.getPluginImportType(path);
 
@@ -222,13 +222,13 @@ class SergeantPluginLoader {
 	 * @param content
 	 * @return {Array} `[{ rawImport: 'import "./sergeant";', path: './sergeant' }]` in case of `import "./sergeant";`
 	 */
-	collectImports(content) {
+	collectImportStatements(content) {
 		const langRegexes = this.regexes[this.resourceLang];
 
 		// Remove comments from the `content`, in order not to import commented out imports
 		const uncommented = SergeantPluginLoader.removeComments(content);
 
-		// This will contain the Promises returned from `this.generateRawImports`
+		// This will contain the Promises returned from `this.generatePluginImportStatements`
 		const foundImports = [];
 
 		// We are iterating over the possible regexes (like `import 'xy'` or `require('xy')`) and checking the raw code against them
@@ -251,7 +251,7 @@ class SergeantPluginLoader {
 	 * @param arr
 	 * @return {Array}
 	 */
-	filterPluginImports(arr = []) {
+	filterPluginImportStatements(arr = []) {
 		const returnData = [];
 
 		arr.forEach(item => {
@@ -264,16 +264,16 @@ class SergeantPluginLoader {
 	}
 
 	/**
-	 * Replaces the imports from `pluginImports` with the resolved import notations in `content`
+	 * Replaces the import statements of `pluginImports` with the (multiplied) import statements in `content`
 	 *
 	 * @param content
-	 * @param pluginImports Array returned from this.collectImports() or this.filterPluginImports()
+	 * @param pluginImports Array returned from this.collectImportStatements() or this.filterPluginImportStatements()
 	 * @return {Promise<String>}
 	 */
 	replaceImports(content, pluginImports) {
 		return new Promise((resolve, reject) => {
-			// This will contain the Promises returned from `this.generateRawImports`
-			const replaceQueue = pluginImports.map(pluginImport => this.generateRawImports(pluginImport, this.resourceLang));
+			// This will contain the Promises returned from `this.generatePluginImportStatements`
+			const replaceQueue = pluginImports.map(pluginImport => this.generatePluginImportStatements(pluginImport, this.resourceLang));
 
 			// If we have found any plugin import notation
 			Promise.all(replaceQueue).then(newImports => {
