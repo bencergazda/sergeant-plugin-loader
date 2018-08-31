@@ -180,8 +180,7 @@ class SergeantPluginLoader {
 					// We check if the `pluginPath` exists, and we add it to the import list only if so
 					if (pluginPath !== undefined && fs.existsSync(pluginPath)) {
 						// Fixing the `backslash-in-path` problem, which occurs on Windows machines
-						// Do not forget that stringifyRequest returns a `JSON.stringify()`-ed value! :-)
-						const fixedPluginPath = JSON.parse(loaderUtils.stringifyRequest(this.loaderContext, pluginPath));
+						const fixedPluginPath = pluginPath.replace(/\\/g, '/');
 
 						collection.push(fixedPluginPath)
 					}
@@ -201,30 +200,18 @@ class SergeantPluginLoader {
 	 * @return {*}
 	 */
 	generateRawImports({rawImport, path}, lang) {
-		const importType = this.getPluginImportType(path);
-
-		const newImports = [];
-
-		// Adding some comments to the source
-		const comments = this.comments[lang];
-		newImports.push(comments.open + ' Sergeant plugins - ' + importType + ' files ' + comments.close);
-
-		const pathPromises = this.plugins.map(plugin => this.resolve(plugin, importType, lang));
-
 		return new Promise((resolve, reject) => {
-			Promise.all(pathPromises).then(resolvedPaths => {
-				resolvedPaths.map(pluginPath => {
-					// We check if the `pluginPath` exists, and we add it to the import list only if so
-					if (pluginPath !== undefined && fs.existsSync(pluginPath)) {
-						// Fixing the `backslash-in-path` problem, which occurs on Windows machines
-						// Do not forget that stringifyRequest returns a `JSON.stringify()`-ed value! :-)
-						const fixedPluginPath = JSON.parse(loaderUtils.stringifyRequest(this.loaderContext, pluginPath));
+			const importType = this.getPluginImportType(path);
 
-						newImports.push(rawImport.replace(path, fixedPluginPath))
-					}
+			this.collectFiles(importType).then(resolvedImports => {
+				const newRawImports = [];
+
+				resolvedImports.map(resolvedImport => {
+					// Duplicate the original import statements and replace the path in them, so we will always generate valid output
+					newRawImports.push(rawImport.replace(path, resolvedImport))
 				});
 
-				resolve({rawImport, newImport: newImports.join('\n')});
+				resolve({rawImport, newImport: newRawImports.join('\n')});
 			});
 		});
 	}
