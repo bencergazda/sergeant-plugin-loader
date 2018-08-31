@@ -25,17 +25,6 @@ class SergeantPluginLoader {
 			importPath: /sergeant-plugins\/(.*)/g // We should always have 2 capturing groups in the regex: ['sergeant-plugins-core', 'core']
 		};
 
-		this.comments = {
-			js: {
-				open: '/*',
-				close: '*/'
-			},
-			sass: {
-				open: '/*',
-				close: '*/'
-			}
-		};
-
 		// List of the plugin paths (can be a relative (`../../`) or absolute path (`C:\\...`), or a module request string)
 		this.plugins = [...process.sergeantConfig.sergeant.plugins];
 	}
@@ -196,10 +185,9 @@ class SergeantPluginLoader {
 	 *
 	 * @param rawImport The raw import string (eg. `require('sergeant-plugins-core');`)
 	 * @param path The sergeant module importation string pattern (eg. `sergeant-plugins-core`)
-	 * @param lang The language of the file (eg. `js`)
 	 * @return {*}
 	 */
-	generatePluginImportStatements({rawImport, path}, lang) {
+	generatePluginImportStatements({rawImport, path}) {
 		return new Promise((resolve, reject) => {
 			const importType = this.getPluginImportType(path);
 
