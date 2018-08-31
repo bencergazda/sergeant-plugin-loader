@@ -252,15 +252,7 @@ class SergeantPluginLoader {
 	 * @return {Array}
 	 */
 	filterPluginImportStatements(arr = []) {
-		const returnData = [];
-
-		arr.forEach(item => {
-			if (this.getPluginImportType(item.path) !== null) {
-				returnData.push(item)
-			}
-		});
-
-		return returnData;
+		return arr.filter(item => this.getPluginImportType(item.path) !== null);
 	}
 
 	/**
