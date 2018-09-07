@@ -185,23 +185,18 @@ class SergeantPluginLoader {
 	 *
 	 * @param rawImport The raw import string (eg. `require('sergeant-plugins-core');`)
 	 * @param path The sergeant module importation string pattern (eg. `sergeant-plugins-core`)
+	 * @param resolvedPaths Array returned from this.collectFiles()
 	 * @return {*}
 	 */
-	generatePluginImportStatements({rawImport, path}) {
-		return new Promise((resolve, reject) => {
-			const importType = this.getPluginImportType(path);
+	generatePluginImportStatements({rawImport, path}, resolvedPaths) {
+		const newRawImports = [];
 
-			this.collectFiles(importType).then(resolvedImports => {
-				const newRawImports = [];
-
-				resolvedImports.map(resolvedImport => {
-					// Duplicate the original import statements and replace the path in them, so we will always generate valid output
-					newRawImports.push(rawImport.replace(path, resolvedImport))
-				});
-
-				resolve({rawImport, newImport: newRawImports.join('\n')});
-			});
+		resolvedPaths.map(resolvedImport => {
+			// Duplicate the original import statements and replace the path in them, so we will always generate valid output
+			newRawImports.push(rawImport.replace(path, resolvedImport))
 		});
+
+		return {rawImport, newImport: newRawImports.join('\n')};
 	}
 
 	/**
@@ -253,7 +248,11 @@ class SergeantPluginLoader {
 	replaceImports(content, pluginImports) {
 		return new Promise((resolve, reject) => {
 			// This will contain the Promises returned from `this.generatePluginImportStatements`
-			const replaceQueue = pluginImports.map(pluginImport => this.generatePluginImportStatements(pluginImport, this.resourceLang));
+			const replaceQueue = pluginImports.map(pluginImport => {
+				const importType = this.getPluginImportType(pluginImport.path);
+
+				this.collectFiles(importType).then(resolvedImports => this.generatePluginImportStatements(pluginImport, resolvedImports));
+			});
 
 			// If we have found any plugin import notation
 			Promise.all(replaceQueue).then(newImports => {
