@@ -5,11 +5,11 @@ module.exports = function loader(content, map, meta) {
 	const callback = this.async();
 
 	const imports = sergeantPluginLoader.collectImportStatements(content);
-	const pluginImports = sergeantPluginLoader.filterPluginImportStatements(imports);
+	const pluginImportStatements = sergeantPluginLoader.filterPluginImportStatements(imports);
 
 	// If we have found any Sergeant plugin import notation
-	if (pluginImports.length) {
-		sergeantPluginLoader.replaceImports(content, pluginImports).then(
+	if (pluginImportStatements.length) {
+		sergeantPluginLoader.replaceImports(content, pluginImportStatements).then(
 			// Return the processed content, if we received, or the untouched content
 			processedContent => callback(null, processedContent, map, meta),
 			err => callback(err)
