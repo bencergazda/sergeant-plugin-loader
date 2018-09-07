@@ -249,9 +249,11 @@ class SergeantPluginLoader {
 		return new Promise((resolve, reject) => {
 			// This will contain the Promises returned from `this.generatePluginImportStatements`
 			const replaceQueue = pluginImports.map(pluginImport => {
-				const importType = this.getPluginImportType(pluginImport.path);
+				return new Promise((resolve, reject) => {
+					const importType = this.getPluginImportType(pluginImport.path);
 
-				this.collectFiles(importType).then(resolvedImports => this.generatePluginImportStatements(pluginImport, resolvedImports));
+					this.collectFiles(importType).then(resolvedImports => resolve(this.generatePluginImportStatements(pluginImport, resolvedImports)));
+				});
 			});
 
 			// If we have found any plugin import notation
