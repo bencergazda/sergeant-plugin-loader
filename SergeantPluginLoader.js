@@ -26,7 +26,7 @@ class SergeantPluginLoader {
 		};
 
 		// List of the plugin paths (can be a relative (`../../`) or absolute path (`C:\\...`), or a module request string)
-		this.plugins = [...process.sergeantConfig.sergeant.plugins];
+		this.plugins = [...process.sergeant.config.plugins];
 	}
 
 	/**
