@@ -26,6 +26,7 @@ class SergeantPluginLoader {
 
 		// List of the plugin paths (can be a relative (`../../`) or absolute path (`C:\\...`), or a module request string)
 		this.plugins = process.sergeant.config.plugins || [];
+		this.resetCSS = process.sergeant.config.sass.resetCSS || [];
 	}
 
 	/**
@@ -101,7 +102,8 @@ class SergeantPluginLoader {
 			if (SergeantPluginLoader.isModulePath(filePath)) filePath = '~' + filePath;
 
 			importer(filePath, this.loaderContext.context, value => {
-				resolve(value.file)
+				// `value.file` doesn't mean that the file itself really exists. We should still do the general check.
+				this.resolveGeneral(value.file).then(resolve)
 			})
 		});
 	}
@@ -110,9 +112,9 @@ class SergeantPluginLoader {
 	 * Tries to resolve the given file with the loader's resolve method
 	 *
 	 * @param filePath
-	 * @return {Promise<String>} Resolved file path for one JS file
+	 * @return {Promise<String>} Resolved file path for one file
 	 */
-	resolveJs(filePath) {
+	resolveGeneral(filePath) {
 		return new Promise(resolve => {
 			this.loaderContext.resolve(this.context, filePath, (err, result) => {
 				if (err) {
@@ -128,23 +130,18 @@ class SergeantPluginLoader {
 	/**
 	 * Router function to pass the resolve job to the corresponding, language-specific resolver
 	 *
-	 * @param plugin Path for the plugin folder (eg. `plugin-1` or `./public/plugin-4`)
-	 * @param importType Type of the file to be resolved (eg. `core` or `footprint`)
+	 * @param filePath Path for the requested plugin file (eg. `plugin-1/core` or `./public/plugin-4/footprint`, or `resetCss-css/sass/resetCss`)
 	 * @param lang The type of the file to be resolved (eg. `js` or `sass`)
 	 * @return {Promise<String>} Resolved file path for one plugin file
 	 */
-	resolve(plugin, importType, lang) {
-		if (importType === undefined) throw new Error('Sergeant plugin loader resolve - type must be set!');
-
-		// We cannot use path.join(), as it modifies even the beginning of the path, eg. `path.join('./something', 'core')` will be `something/core`.
-		// This doesn't let us to use relative plugin imports
-		const filePath = plugin + '/' + importType;
+	resolve(filePath, lang = this.resourceLang) {
+		if (lang === undefined) throw new Error('Sergeant plugin loader - lang must be set!');
 
 		switch (lang) {
 			case 'sass':
 				return this.resolveSass(filePath);
 			case 'js':
-				return this.resolveJs(filePath);
+				return this.resolveGeneral(filePath);
 			default:
 				throw new Error('Sergeant plugin loader - could not find appropriate plugin resolver for `' + lang + '` lang');
 		}
@@ -158,8 +155,18 @@ class SergeantPluginLoader {
 	 */
 	collectFiles(importType) {
 		return new Promise((resolve, reject) => {
+			let source = (importType === 'resetCSS') ? this.resetCSS : this.plugins;
+
+			if (!Array.isArray(source)) source = [source];
+
 			// Collecting all the available files
-			const pathPromises = this.plugins.map(plugin => this.resolve(plugin, importType, this.resourceLang));
+			const pathPromises = source.map(plugin => {
+				// We cannot use path.join(), as it modifies even the beginning of the path, eg. `path.join('./something', 'core')` will be `something/core`.
+				// This doesn't let us to use relative plugin imports
+				const filePath = (importType === 'resetCSS') ? plugin : plugin + '/' + importType;
+
+				return this.resolve(filePath)
+			});
 
 			Promise.all(pathPromises)
 				.then(resolvedPaths => {
