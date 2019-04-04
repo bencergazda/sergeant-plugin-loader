@@ -1,5 +1,12 @@
 const SergeantPluginLoader = require('./SergeantPluginLoader');
 
+/**
+ * Sass loader for resolving Sergeant's plugin imports
+ *
+ * @param content
+ * @param map
+ * @param meta
+ */
 module.exports = function loader(content, map, meta) {
 	const sergeantPluginLoader = new SergeantPluginLoader(this);
 	const callback = this.async();

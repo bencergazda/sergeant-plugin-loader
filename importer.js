@@ -1,5 +1,12 @@
 const SergeantPluginLoader = require('./SergeantPluginLoader');
 
+/**
+ * Sass importer function for resolving Sergeant's plugin imports
+ *
+ * @param url
+ * @param prev
+ * @param done
+ */
 module.exports = function importer(url, prev, done) {
 	const sergeantPluginLoader = new SergeantPluginLoader(this.loaderContext);
 	const importType = sergeantPluginLoader.getPluginImportType(url);
