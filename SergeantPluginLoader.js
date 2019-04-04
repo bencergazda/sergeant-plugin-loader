@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const sassResolver = require('./sassResolver');
-const loaderUtils = require('loader-utils');
 
 class SergeantPluginLoader {
 	constructor(loaderContext) {
