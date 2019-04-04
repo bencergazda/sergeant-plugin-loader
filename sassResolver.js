@@ -7,7 +7,7 @@ const pify = require('pify');
  * @param resourcePath
  * @param resolve
  */
-module.exports = function sassImporter (resourcePath, resolve) {
+module.exports = function sassImporter(resourcePath, resolve) {
 	const resolve_pify = pify(resolve);
 
 	return webpackImporter(resourcePath, resolve_pify, function() {}); // will be a `function (url, prev, done) {}`

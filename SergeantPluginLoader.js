@@ -72,7 +72,7 @@ class SergeantPluginLoader {
 	 *
 	 * @return {string}
 	 */
-	get resourceLang () {
+	get resourceLang() {
 		const ext = path.extname(this.loaderContext.resourcePath).replace('.', ''); // probably more safe than `ext.substr(1)`
 
 		switch (ext) {
@@ -187,7 +187,7 @@ class SergeantPluginLoader {
 	 * @param resolvedPaths Array returned from this.collectFiles()
 	 * @return {*}
 	 */
-	generatePluginImportStatements({rawImport, path}, resolvedPaths) {
+	generatePluginImportStatements({ rawImport, path }, resolvedPaths) {
 		const newRawImports = [];
 
 		resolvedPaths.map(resolvedImport => {
@@ -195,7 +195,7 @@ class SergeantPluginLoader {
 			newRawImports.push(rawImport.replace(path, resolvedImport))
 		});
 
-		return {rawImport, newImport: newRawImports.join('\n')};
+		return { rawImport, newImport: newRawImports.join('\n') };
 	}
 
 	/**
@@ -220,7 +220,7 @@ class SergeantPluginLoader {
 
 			// Find all the possible imports (if there's more), which mach this RegExp (otherwise we would just get the first instance - https://stackoverflow.com/a/5283091/3111787)
 			while ((matches = regexp.exec(uncommented)) !== null) {
-				foundImports.push({rawImport: matches[0], path: matches[1]});
+				foundImports.push({ rawImport: matches[0], path: matches[1] });
 			}
 		});
 
