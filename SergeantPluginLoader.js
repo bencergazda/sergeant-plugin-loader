@@ -146,7 +146,7 @@ class SergeantPluginLoader {
 			case 'js':
 				return this.resolveJs(filePath);
 			default:
-				throw new Error('resolve - could not find appropriate plugin resolver for lang `' + lang + '`')
+				throw new Error('Sergeant plugin loader - could not find appropriate plugin resolver for `' + lang + '` lang');
 		}
 	}
 
@@ -161,21 +161,23 @@ class SergeantPluginLoader {
 			// Collecting all the available files
 			const pathPromises = this.plugins.map(plugin => this.resolve(plugin, importType, this.resourceLang));
 
-			Promise.all(pathPromises).then(resolvedPaths => {
-				const collection = [];
+			Promise.all(pathPromises)
+				.then(resolvedPaths => {
+					const collection = [];
 
-				resolvedPaths.map(pluginPath => {
-					// We check if the `pluginPath` exists, and we add it to the import list only if so
-					if (pluginPath !== undefined && fs.existsSync(pluginPath)) {
-						// Fixing the `backslash-in-path` problem, which occurs on Windows machines
-						const fixedPluginPath = pluginPath.replace(/\\/g, '/');
+					resolvedPaths.map(pluginPath => {
+						// We check if the `pluginPath` exists, and we add it to the import list only if so
+						if (pluginPath !== undefined && fs.existsSync(pluginPath)) {
+							// Fixing the `backslash-in-path` problem, which occurs on Windows machines
+							const fixedPluginPath = pluginPath.replace(/\\/g, '/');
 
-						collection.push(fixedPluginPath)
-					}
-				});
+							collection.push(fixedPluginPath)
+						}
+					});
 
-				resolve(collection);
-			});
+					resolve(collection);
+				})
+				.catch(reject);
 		});
 	}
 
@@ -251,16 +253,22 @@ class SergeantPluginLoader {
 				return new Promise((resolve, reject) => {
 					const importType = this.getPluginImportType(pluginImport.path);
 
-					this.collectFiles(importType).then(resolvedImports => resolve(this.generatePluginImportStatements(pluginImport, resolvedImports)));
+					this.collectFiles(importType)
+						.then(resolvedImports => {
+							resolve(this.generatePluginImportStatements(pluginImport, resolvedImports))
+						})
+						.catch(reject);
 				});
 			});
 
 			// If we have found any plugin import notation
-			Promise.all(replaceQueue).then(newImports => {
-				// Replace all the collected imports in the content and return it.
-				newImports.map(newImport => content = content.replace(newImport.rawImport, newImport.newImport));
-				resolve(content)
-			});
+			Promise.all(replaceQueue)
+				.then(newImports => {
+					// Replace all the collected imports in the content and return it.
+					newImports.map(newImport => content = content.replace(newImport.rawImport, newImport.newImport));
+					resolve(content)
+				})
+				.catch(reject);
 		})
 	}
 }

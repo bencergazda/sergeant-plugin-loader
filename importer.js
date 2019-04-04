@@ -13,10 +13,10 @@ module.exports = function importer(url, prev, done) {
 
 	// If `url` is a Sergeant plugin import notation
 	if (importType !== null) {
-		sergeantPluginLoader.collectFiles(importType).then(
+		sergeantPluginLoader.collectFiles(importType)
 			// Return an array of objects, each contains https://github.com/sass/node-sass/issues/2467
-			resolvedImports => done(resolvedImports.map(resolvedImport => ({ file: resolvedImport })))
-		);
+			.then(resolvedImports => done(resolvedImports.map(resolvedImport => ({ file: resolvedImport }))))
+			.catch((err) => done(err));
 	} else {
 		// Return `null` to pass the responsibility back to other custom importers (as in https://github.com/sass/node-sass#importer--v200---experimental)
 		// (Returning `{ file: url }`, as `sass-loader` does would skip any other importers, which would be bad for us)
