@@ -21,10 +21,11 @@ class SergeantPluginLoader {
 				import: /@import\s?['"](.*)['"];?/g // @import, ' or ", ; at the end or not, eg: @import '...';
 			},
 			// And finding the sergeant plugin import paths in them
-			importPath: /sergeant-plugins\/(.*)/g // We should always have 2 capturing groups in the regex: ['sergeant-plugins-core', 'core']
+			importPath: /sergeant-(resetCSS|framework|plugins)(\/(.*))?/g // We should always have 4 capturing groups in the regex: ['sergeant-plugins/core', 'plugins', '/core', 'core'] (Only 'plugins' and 'core' will be used.)
 		};
 
 		// List of the plugin paths (can be a relative (`../../`) or absolute path (`C:\\...`), or a module request string)
+		this.framework = process.sergeant.config.framework || [];
 		this.plugins = process.sergeant.config.plugins || [];
 		this.resetCSS = process.sergeant.config.sass.resetCSS || [];
 	}
@@ -65,7 +66,14 @@ class SergeantPluginLoader {
 	getPluginImportType(path) {
 		const match = new RegExp(this.regexes.importPath).exec(path);
 
-		return (match !== null) ? match[1] : null;
+		if (match !== null) {
+			return {
+				request: match[1],
+				type: match[3]
+			}
+		} else {
+			return null;
+		}
 	}
 
 	/**
@@ -130,7 +138,7 @@ class SergeantPluginLoader {
 	/**
 	 * Router function to pass the resolve job to the corresponding, language-specific resolver
 	 *
-	 * @param filePath Path for the requested plugin file (eg. `plugin-1/core` or `./public/plugin-4/footprint`, or `resetCss-css/sass/resetCss`)
+	 * @param filePath Path for the requested plugin file (eg. `plugin-1/core` or `./public/plugin-4/footprint`, or eg. `resetCss-css/sass/resetCss`)
 	 * @param lang The type of the file to be resolved (eg. `js` or `sass`)
 	 * @return {Promise<String>} Resolved file path for one plugin file
 	 */
@@ -150,20 +158,32 @@ class SergeantPluginLoader {
 	/**
 	 * Returns an array with all the resolved plugin-files for the given import type
 	 *
-	 * @param importType Type of the file to be resolved (eg. `core` or `footprint`)
+	 * @param importType Type of the file to be resolved (eg. `{ request: 'plugin', type: 'core'}` or `{ request: 'resetCSS', type: null }`)
 	 * @return {Promise<Array>}
 	 */
 	collectFiles(importType) {
 		return new Promise((resolve, reject) => {
-			let source = (importType === 'resetCSS') ? this.resetCSS : this.plugins;
+			// This is safe, we don't need to check whether `importType.request` is valid, as otherwise RegExp wouldn't match it.
+			let source = this[importType.request];
 
 			if (!Array.isArray(source)) source = [source];
 
 			// Collecting all the available files
 			const pathPromises = source.map(plugin => {
-				// We cannot use path.join(), as it modifies even the beginning of the path, eg. `path.join('./something', 'core')` will be `something/core`.
-				// This doesn't let us to use relative plugin imports
-				const filePath = (importType === 'resetCSS') ? plugin : plugin + '/' + importType;
+				let filePath;
+				switch (importType.request) {
+					case 'resetCSS':
+						filePath = plugin;
+						break;
+					case 'framework':
+						filePath = 'sergeant/framework/' + plugin + '/' + importType.type;
+						break;
+					default:
+						// We cannot use path.join(), as it modifies even the beginning of the path, eg. `path.join('./something', 'core')` will be `something/core`.
+						// This doesn't let us to use relative plugin imports
+						filePath = plugin + '/' + importType.type;
+						break;
+				}
 
 				return this.resolve(filePath)
 			});
